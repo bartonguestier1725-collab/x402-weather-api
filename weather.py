@@ -122,20 +122,22 @@ async def get_current(lat: float, lon: float) -> dict:
         raise HTTPException(502, "Weather data source unavailable")
 
     data = resp.json()
-    cur = data["current"]
-    code = cur["weather_code"]
-
-    return {
-        "temperature_c": cur["temperature_2m"],
-        "feels_like_c": cur["apparent_temperature"],
-        "humidity_pct": cur["relative_humidity_2m"],
-        "wind_speed_kmh": cur["wind_speed_10m"],
-        "wind_direction_deg": cur["wind_direction_10m"],
-        "precipitation_mm": cur["precipitation"],
-        "condition": describe_weather_code(code),
-        "weather_code": code,
-        "observation_time": cur["time"],
-    }
+    try:
+        cur = data["current"]
+        code = cur["weather_code"]
+        return {
+            "temperature_c": cur["temperature_2m"],
+            "feels_like_c": cur["apparent_temperature"],
+            "humidity_pct": cur["relative_humidity_2m"],
+            "wind_speed_kmh": cur["wind_speed_10m"],
+            "wind_direction_deg": cur["wind_direction_10m"],
+            "precipitation_mm": cur["precipitation"],
+            "condition": describe_weather_code(code),
+            "weather_code": code,
+            "observation_time": cur["time"],
+        }
+    except (KeyError, TypeError, IndexError) as exc:
+        raise HTTPException(502, f"Unexpected weather data format: {exc}")
 
 
 async def get_forecast(lat: float, lon: float, days: int) -> list[dict]:
@@ -165,20 +167,23 @@ async def get_forecast(lat: float, lon: float, days: int) -> list[dict]:
         raise HTTPException(502, "Weather data source unavailable")
 
     data = resp.json()
-    daily = data["daily"]
-    result = []
-    for i in range(len(daily["time"])):
-        code = daily["weather_code"][i]
-        result.append(
-            {
-                "date": daily["time"][i],
-                "condition": describe_weather_code(code),
-                "weather_code": code,
-                "temp_max_c": daily["temperature_2m_max"][i],
-                "temp_min_c": daily["temperature_2m_min"][i],
-                "precipitation_mm": daily["precipitation_sum"][i],
-                "precipitation_probability_pct": daily["precipitation_probability_max"][i],
-                "wind_max_kmh": daily["wind_speed_10m_max"][i],
-            }
-        )
-    return result
+    try:
+        daily = data["daily"]
+        result = []
+        for i in range(len(daily["time"])):
+            code = daily["weather_code"][i]
+            result.append(
+                {
+                    "date": daily["time"][i],
+                    "condition": describe_weather_code(code),
+                    "weather_code": code,
+                    "temp_max_c": daily["temperature_2m_max"][i],
+                    "temp_min_c": daily["temperature_2m_min"][i],
+                    "precipitation_mm": daily["precipitation_sum"][i],
+                    "precipitation_probability_pct": daily["precipitation_probability_max"][i],
+                    "wind_max_kmh": daily["wind_speed_10m_max"][i],
+                }
+            )
+        return result
+    except (KeyError, TypeError, IndexError) as exc:
+        raise HTTPException(502, f"Unexpected weather data format: {exc}")

@@ -216,8 +216,8 @@ async def health_check() -> HealthResponse:
 @app.get("/weather/current")
 async def weather_current(
     city: str | None = Query(default=None, description="City name (e.g., Tokyo, London, New York)"),
-    lat: float | None = Query(default=None, description="Latitude (-90 to 90)"),
-    lon: float | None = Query(default=None, description="Longitude (-180 to 180)"),
+    lat: float | None = Query(default=None, ge=-90, le=90, description="Latitude (-90 to 90)"),
+    lon: float | None = Query(default=None, ge=-180, le=180, description="Longitude (-180 to 180)"),
 ) -> CurrentWeatherResponse:
     city_name, country, latitude, longitude = await _resolve_location(city, lat, lon)
     data = await get_current(latitude, longitude)
@@ -233,8 +233,8 @@ async def weather_current(
 @app.get("/weather/forecast")
 async def weather_forecast(
     city: str | None = Query(default=None, description="City name (e.g., Tokyo, London, New York)"),
-    lat: float | None = Query(default=None, description="Latitude (-90 to 90)"),
-    lon: float | None = Query(default=None, description="Longitude (-180 to 180)"),
+    lat: float | None = Query(default=None, ge=-90, le=90, description="Latitude (-90 to 90)"),
+    lon: float | None = Query(default=None, ge=-180, le=180, description="Longitude (-180 to 180)"),
     days: int = Query(default=3, ge=1, le=7, description="Number of forecast days (1-7)"),
 ) -> ForecastResponse:
     city_name, country, latitude, longitude = await _resolve_location(city, lat, lon)

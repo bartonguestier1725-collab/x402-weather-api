@@ -168,6 +168,13 @@ class TestGetCurrent:
             await get_current(35.69, 139.69)
         assert exc_info.value.status_code == 504
 
+    async def test_current_malformed_response(self):
+        """200 but missing expected keys → 502 (not KeyError/500)."""
+        self.mock_get.return_value = _mock_response(200, {"error": True, "reason": "bad"})
+        with pytest.raises(Exception) as exc_info:
+            await get_current(35.69, 139.69)
+        assert exc_info.value.status_code == 502
+
 
 # --- Forecast ---
 
@@ -206,6 +213,13 @@ class TestGetForecast:
 
     async def test_forecast_upstream_error(self):
         self.mock_get.return_value = _mock_response(500, {})
+        with pytest.raises(Exception) as exc_info:
+            await get_forecast(35.69, 139.69, 3)
+        assert exc_info.value.status_code == 502
+
+    async def test_forecast_malformed_response(self):
+        """200 but missing expected keys → 502 (not KeyError/500)."""
+        self.mock_get.return_value = _mock_response(200, {"error": True, "reason": "bad"})
         with pytest.raises(Exception) as exc_info:
             await get_forecast(35.69, 139.69, 3)
         assert exc_info.value.status_code == 502
