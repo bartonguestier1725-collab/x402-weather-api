@@ -1,0 +1,28 @@
+[project]
+name = "x402-weather-api"
+version = "0.1.0"
+description = "Global weather data for AI agents via x402 micropayments on Base"
+requires-python = ">=3.10"
+dependencies = [
+    "x402[fastapi,evm]>=2.1.0",
+    "uvicorn>=0.30.0",
+    "python-dotenv>=1.0.0",
+    "cdp-sdk>=1.39.1",
+    "jsonschema>=4.20",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-timeout>=2.3",
+    "pytest-asyncio>=0.24",
+]
+
+[tool.pytest.ini_options]
+timeout = 10
+asyncio_mode = "auto"
+markers = [
+    "integration: requires network + .env (x402 middleware)",
+]
+addopts = "-m 'not integration'"
