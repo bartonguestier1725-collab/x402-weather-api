@@ -1,0 +1,482 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Weather API",
+        "description": "Global weather data for AI agents. Current conditions and daily forecasts for any city worldwide, powered by Open-Meteo and monetized via x402 micropayments (USDC on Base).",
+        "version": "0.1.0"
+    },
+    "paths": {
+        "/.well-known/x402": {
+            "get": {
+                "summary": "X402 Discovery",
+                "description": "x402 discovery document \u2014 lists all paid endpoints for auto-cataloging.",
+                "operationId": "x402_discovery__well_known_x402_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "summary": "Health Check",
+                "operationId": "health_check_health_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/weather/current": {
+            "get": {
+                "summary": "Weather Current",
+                "operationId": "weather_current_weather_current_get",
+                "parameters": [
+                    {
+                        "name": "city",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "City name (e.g., Tokyo, London, New York)",
+                            "title": "City"
+                        },
+                        "description": "City name (e.g., Tokyo, London, New York)"
+                    },
+                    {
+                        "name": "lat",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "number",
+                                    "maximum": 90,
+                                    "minimum": -90
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Latitude (-90 to 90)",
+                            "title": "Lat"
+                        },
+                        "description": "Latitude (-90 to 90)"
+                    },
+                    {
+                        "name": "lon",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "number",
+                                    "maximum": 180,
+                                    "minimum": -180
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Longitude (-180 to 180)",
+                            "title": "Lon"
+                        },
+                        "description": "Longitude (-180 to 180)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CurrentWeatherResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/weather/forecast": {
+            "get": {
+                "summary": "Weather Forecast",
+                "operationId": "weather_forecast_weather_forecast_get",
+                "parameters": [
+                    {
+                        "name": "city",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "City name (e.g., Tokyo, London, New York)",
+                            "title": "City"
+                        },
+                        "description": "City name (e.g., Tokyo, London, New York)"
+                    },
+                    {
+                        "name": "lat",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "number",
+                                    "maximum": 90,
+                                    "minimum": -90
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Latitude (-90 to 90)",
+                            "title": "Lat"
+                        },
+                        "description": "Latitude (-90 to 90)"
+                    },
+                    {
+                        "name": "lon",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "number",
+                                    "maximum": 180,
+                                    "minimum": -180
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Longitude (-180 to 180)",
+                            "title": "Lon"
+                        },
+                        "description": "Longitude (-180 to 180)"
+                    },
+                    {
+                        "name": "days",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 7,
+                            "minimum": 1,
+                            "description": "Number of forecast days (1-7)",
+                            "default": 3,
+                            "title": "Days"
+                        },
+                        "description": "Number of forecast days (1-7)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ForecastResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "CurrentWeatherResponse": {
+                "properties": {
+                    "city": {
+                        "type": "string",
+                        "title": "City"
+                    },
+                    "country": {
+                        "type": "string",
+                        "title": "Country"
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "title": "Latitude"
+                    },
+                    "longitude": {
+                        "type": "number",
+                        "title": "Longitude"
+                    },
+                    "temperature_c": {
+                        "type": "number",
+                        "title": "Temperature C"
+                    },
+                    "feels_like_c": {
+                        "type": "number",
+                        "title": "Feels Like C"
+                    },
+                    "humidity_pct": {
+                        "type": "integer",
+                        "title": "Humidity Pct"
+                    },
+                    "wind_speed_kmh": {
+                        "type": "number",
+                        "title": "Wind Speed Kmh"
+                    },
+                    "wind_direction_deg": {
+                        "type": "integer",
+                        "title": "Wind Direction Deg"
+                    },
+                    "precipitation_mm": {
+                        "type": "number",
+                        "title": "Precipitation Mm"
+                    },
+                    "condition": {
+                        "type": "string",
+                        "title": "Condition"
+                    },
+                    "weather_code": {
+                        "type": "integer",
+                        "title": "Weather Code"
+                    },
+                    "observation_time": {
+                        "type": "string",
+                        "title": "Observation Time"
+                    },
+                    "attribution": {
+                        "type": "string",
+                        "title": "Attribution",
+                        "default": "Weather data by Open-Meteo.com"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "city",
+                    "country",
+                    "latitude",
+                    "longitude",
+                    "temperature_c",
+                    "feels_like_c",
+                    "humidity_pct",
+                    "wind_speed_kmh",
+                    "wind_direction_deg",
+                    "precipitation_mm",
+                    "condition",
+                    "weather_code",
+                    "observation_time"
+                ],
+                "title": "CurrentWeatherResponse"
+            },
+            "ForecastDay": {
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "title": "Date"
+                    },
+                    "condition": {
+                        "type": "string",
+                        "title": "Condition"
+                    },
+                    "weather_code": {
+                        "type": "integer",
+                        "title": "Weather Code"
+                    },
+                    "temp_max_c": {
+                        "type": "number",
+                        "title": "Temp Max C"
+                    },
+                    "temp_min_c": {
+                        "type": "number",
+                        "title": "Temp Min C"
+                    },
+                    "precipitation_mm": {
+                        "type": "number",
+                        "title": "Precipitation Mm"
+                    },
+                    "precipitation_probability_pct": {
+                        "type": "integer",
+                        "title": "Precipitation Probability Pct"
+                    },
+                    "wind_max_kmh": {
+                        "type": "number",
+                        "title": "Wind Max Kmh"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "date",
+                    "condition",
+                    "weather_code",
+                    "temp_max_c",
+                    "temp_min_c",
+                    "precipitation_mm",
+                    "precipitation_probability_pct",
+                    "wind_max_kmh"
+                ],
+                "title": "ForecastDay"
+            },
+            "ForecastResponse": {
+                "properties": {
+                    "city": {
+                        "type": "string",
+                        "title": "City"
+                    },
+                    "country": {
+                        "type": "string",
+                        "title": "Country"
+                    },
+                    "latitude": {
+                        "type": "number",
+                        "title": "Latitude"
+                    },
+                    "longitude": {
+                        "type": "number",
+                        "title": "Longitude"
+                    },
+                    "days": {
+                        "items": {
+                            "$ref": "#/components/schemas/ForecastDay"
+                        },
+                        "type": "array",
+                        "title": "Days"
+                    },
+                    "attribution": {
+                        "type": "string",
+                        "title": "Attribution",
+                        "default": "Weather data by Open-Meteo.com"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "city",
+                    "country",
+                    "latitude",
+                    "longitude",
+                    "days"
+                ],
+                "title": "ForecastResponse"
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "HealthResponse": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    },
+                    "service": {
+                        "type": "string",
+                        "title": "Service"
+                    },
+                    "network": {
+                        "type": "string",
+                        "title": "Network"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "service",
+                    "network"
+                ],
+                "title": "HealthResponse"
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    },
+                    "input": {
+                        "title": "Input"
+                    },
+                    "ctx": {
+                        "type": "object",
+                        "title": "Context"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            }
+        }
+    }
+}
