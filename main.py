@@ -13,7 +13,7 @@ Endpoints:
 import os
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from x402.http import FacilitatorConfig, HTTPFacilitatorClient, PaymentOption
@@ -192,6 +192,33 @@ routes = {
 }
 
 app.add_middleware(PaymentMiddlewareASGI, routes=routes, server=server)
+
+
+# --- x402 Discovery (for x402scan, RelAI, etc.) ---
+@app.get("/.well-known/x402")
+async def x402_discovery(request: Request):
+    """x402 discovery document — lists all paid endpoints for auto-cataloging."""
+    origin = f"{request.url.scheme}://{request.url.netloc}"
+    return {
+        "version": 1,
+        "resources": [
+            f"{origin}/weather/current",
+            f"{origin}/weather/forecast",
+        ],
+        "instructions": (
+            "# Weather API\n\n"
+            "Global weather data for AI agents. Current conditions and daily forecasts.\n\n"
+            "## Endpoints\n"
+            "- `GET /weather/current?city=Tokyo` — Current weather\n"
+            "- `GET /weather/forecast?city=Tokyo&days=3` — Daily forecast (1-7 days)\n\n"
+            "## Pricing\n"
+            "All endpoints: $0.001/request (USDC on Base)\n\n"
+            "## Data Source\n"
+            "Open-Meteo (CC BY 4.0)\n\n"
+            "## Contact\n"
+            "GitHub: https://github.com/bartonguestier1725-collab/x402-weather-api"
+        ),
+    }
 
 
 # --- Helper ---
