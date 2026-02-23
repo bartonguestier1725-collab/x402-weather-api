@@ -11,6 +11,8 @@ Endpoints:
 """
 
 import os
+import sys
+import time
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Request
@@ -191,7 +193,61 @@ routes = {
     ),
 }
 
+# --- Access Log (analytics) ---
+class AccessLogMiddleware:
+    """ASGI middleware — logs requests to paid endpoints for analytics."""
+
+    _SKIP = frozenset({"/health", "/.well-known/x402", "/openapi.json", "/docs", "/redoc"})
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        path = scope.get("path", "/")
+        if path in self._SKIP or scope.get("method") == "OPTIONS":
+            return await self.app(scope, receive, send)
+
+        t0 = time.monotonic()
+        status = 0
+
+        async def _send(msg):
+            nonlocal status
+            if msg["type"] == "http.response.start":
+                status = msg["status"]
+            await send(msg)
+
+        try:
+            await self.app(scope, receive, _send)
+        except Exception:
+            status = 500
+            raise
+        finally:
+            ms = (time.monotonic() - t0) * 1000
+            hdrs = dict(scope.get("headers", []))
+            raw_ip = hdrs.get(b"x-forwarded-for", b"").decode(errors="replace")
+            ip = raw_ip.split(",")[0].strip() if raw_ip else "direct"
+            ua = hdrs.get(b"user-agent", b"").decode(errors="replace")[:80]
+            qs = scope.get("query_string", b"").decode(errors="replace")
+            url = f"{path}?{qs}" if qs else path
+
+            if hdrs.get(b"x-rapidapi-proxy-secret"):
+                ch = "rapidapi"
+            elif status == 402:
+                ch = "no-pay"
+            else:
+                ch = "x402"
+
+            print(
+                f"[access] {scope.get('method', '?')} {url} {status} "
+                f"{ms:.0f}ms from={ip} ch={ch} ua={ua}",
+                file=sys.stderr,
+            )
+
+
 app.add_middleware(PaymentMiddlewareASGI, routes=routes, server=server)
+app.add_middleware(AccessLogMiddleware)
 
 
 # --- x402 Discovery (for x402scan, RelAI, etc.) ---
