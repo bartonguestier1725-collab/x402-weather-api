@@ -20,7 +20,7 @@ from pydantic import BaseModel
 
 from x402.http import FacilitatorConfig, HTTPFacilitatorClient, PaymentOption
 from x402.http.middleware.fastapi import PaymentMiddlewareASGI
-from x402.http.types import RouteConfig
+from x402.http.types import RouteConfig, UnpaidResponseResult
 from x402.mechanisms.evm.exact import ExactEvmServerScheme
 from x402.schemas import Network
 from x402.extensions.bazaar import bazaar_resource_server_extension
@@ -115,6 +115,16 @@ server.register_extension(bazaar_resource_server_extension)
 PRICE = "$0.001"
 PAYMENT = PaymentOption(scheme="exact", pay_to=EVM_ADDRESS, price=PRICE, network=NETWORK)
 
+
+# --- 402 Sample Responses (show agents what they'd get if they paid) ---
+def _sample(example: dict):
+    """Factory: returns unpaid_response_body callback with sample data."""
+    body = {"_notice": "Payment required ($0.001 USDC on Base). Sample response below.", **example}
+    def callback(_ctx):
+        return UnpaidResponseResult(content_type="application/json", body=body)
+    return callback
+
+
 routes = {
     "GET /weather/current": RouteConfig(
         accepts=[PAYMENT],
@@ -122,6 +132,16 @@ routes = {
         description="Get current weather conditions for any city worldwide. "
         "Returns temperature, humidity, wind, precipitation, and condition description. "
         "Specify city name (geocoded automatically) or latitude/longitude coordinates.",
+        unpaid_response_body=_sample({
+            "city": "Tokyo", "country": "Japan",
+            "latitude": 35.6895, "longitude": 139.6917,
+            "temperature_c": 12.5, "feels_like_c": 10.2,
+            "humidity_pct": 65, "wind_speed_kmh": 15.3,
+            "wind_direction_deg": 270, "precipitation_mm": 0.0,
+            "condition": "Partly cloudy", "weather_code": 2,
+            "observation_time": "2026-03-03T15:00",
+            "attribution": "Weather data by Open-Meteo.com",
+        }),
         extensions={
             "bazaar": {
                 "info": {
@@ -158,6 +178,14 @@ routes = {
         description="Get daily weather forecast (1-7 days) for any city worldwide. "
         "Returns max/min temperature, precipitation probability, and wind speed per day. "
         "Specify city name or latitude/longitude coordinates.",
+        unpaid_response_body=_sample({
+            "city": "Tokyo", "country": "Japan",
+            "latitude": 35.6895, "longitude": 139.6917,
+            "days": [{"date": "2026-03-04", "condition": "Slight rain", "weather_code": 61,
+                      "temp_max_c": 15.2, "temp_min_c": 8.1, "precipitation_mm": 12.5,
+                      "precipitation_probability_pct": 85, "wind_max_kmh": 22.0}],
+            "attribution": "Weather data by Open-Meteo.com",
+        }),
         extensions={
             "bazaar": {
                 "info": {
