@@ -15,7 +15,7 @@ import sys
 import time
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 
 from x402.http import FacilitatorConfig, HTTPFacilitatorClient, PaymentOption
@@ -112,14 +112,14 @@ server = x402ResourceServer(facilitator)
 server.register(NETWORK, ExactEvmServerScheme())
 server.register_extension(bazaar_resource_server_extension)
 
-PRICE = "$0.001"
+PRICE = "$0.005"
 PAYMENT = PaymentOption(scheme="exact", pay_to=EVM_ADDRESS, price=PRICE, network=NETWORK)
 
 
 # --- 402 Sample Responses (show agents what they'd get if they paid) ---
 def _sample(example: dict):
     """Factory: returns unpaid_response_body callback with sample data."""
-    body = {"_notice": "Payment required ($0.001 USDC on Base). Sample response below.", **example}
+    body = {"_notice": "Payment required ($0.005 USDC on Base). Sample response below.", **example}
     def callback(_ctx):
         return UnpaidResponseResult(content_type="application/json", body=body)
     return callback
@@ -129,18 +129,15 @@ routes = {
     "GET /weather/current": RouteConfig(
         accepts=[PAYMENT],
         mime_type="application/json",
-        description="Get current weather conditions for any city worldwide. "
-        "Returns temperature, humidity, wind, precipitation, and condition description. "
-        "Specify city name (geocoded automatically) or latitude/longitude coordinates.",
+        description="Get current weather conditions for any city worldwide — temperature, feels-like, humidity, "
+        "wind speed and direction, precipitation, and human-readable condition description. "
+        "Supports city name (geocoded automatically via Open-Meteo) or latitude/longitude coordinates. "
+        "Covers every location on Earth with data updated every 15 minutes. Powered by Open-Meteo (CC BY 4.0). "
+        "AI agent API for weather-aware trading strategies, logistics planning, and location-based decision making",
         unpaid_response_body=_sample({
             "city": "Tokyo", "country": "Japan",
-            "latitude": 35.6895, "longitude": 139.6917,
-            "temperature_c": 12.5, "feels_like_c": 10.2,
+            "temperature_c": 12.5, "condition": "Partly cloudy",
             "humidity_pct": 65, "wind_speed_kmh": 15.3,
-            "wind_direction_deg": 270, "precipitation_mm": 0.0,
-            "condition": "Partly cloudy", "weather_code": 2,
-            "observation_time": "2026-03-03T15:00",
-            "attribution": "Weather data by Open-Meteo.com",
         }),
         extensions={
             "bazaar": {
@@ -153,19 +150,10 @@ routes = {
                         "type": "json",
                         "example": {
                             "city": "Tokyo",
-                            "country": "Japan",
-                            "latitude": 35.6895,
-                            "longitude": 139.6917,
                             "temperature_c": 12.5,
-                            "feels_like_c": 10.2,
+                            "condition": "Partly cloudy",
                             "humidity_pct": 65,
                             "wind_speed_kmh": 15.3,
-                            "wind_direction_deg": 270,
-                            "precipitation_mm": 0.0,
-                            "condition": "Partly cloudy",
-                            "weather_code": 2,
-                            "observation_time": "2026-02-20T15:00",
-                            "attribution": "Weather data by Open-Meteo.com",
                         },
                     },
                 },
@@ -175,9 +163,11 @@ routes = {
     "GET /weather/forecast": RouteConfig(
         accepts=[PAYMENT],
         mime_type="application/json",
-        description="Get daily weather forecast (1-7 days) for any city worldwide. "
-        "Returns max/min temperature, precipitation probability, and wind speed per day. "
-        "Specify city name or latitude/longitude coordinates.",
+        description="Get daily weather forecast (1-7 days) for any city worldwide — max/min temperature, "
+        "precipitation amount and probability, and peak wind speed per day. Supports city name "
+        "(geocoded automatically) or latitude/longitude coordinates. Powered by Open-Meteo (CC BY 4.0). "
+        "AI agent API for multi-day weather planning, agricultural decision support, event scheduling, "
+        "and travel itinerary optimization",
         unpaid_response_body=_sample({
             "city": "Tokyo", "country": "Japan",
             "latitude": 35.6895, "longitude": 139.6917,
@@ -225,7 +215,7 @@ routes = {
 class AccessLogMiddleware:
     """ASGI middleware — logs requests to paid endpoints for analytics."""
 
-    _SKIP = frozenset({"/health", "/.well-known/x402", "/openapi.json", "/docs", "/redoc"})
+    _SKIP = frozenset({"/health", "/.well-known/x402", "/openapi.json", "/llms.txt", "/docs", "/redoc"})
 
     def __init__(self, app):
         self.app = app
@@ -296,7 +286,7 @@ async def x402_discovery(request: Request):
             "- `GET /weather/current?city=Tokyo` — Current weather\n"
             "- `GET /weather/forecast?city=Tokyo&days=3` — Daily forecast (1-7 days)\n\n"
             "## Pricing\n"
-            "All endpoints: $0.001/request (USDC on Base)\n\n"
+            "All endpoints: $0.005/request (USDC on Base)\n\n"
             "## Data Source\n"
             "Open-Meteo (CC BY 4.0)\n\n"
             "## Contact\n"
@@ -322,6 +312,43 @@ async def _resolve_location(
 @app.get("/health")
 async def health_check() -> HealthResponse:
     return HealthResponse(status="ok", service="weather-api", network=NETWORK)
+
+
+@app.get("/llms.txt")
+async def llms_txt():
+    """Machine-readable API description for LLM agents."""
+    content = """\
+# Weather API — Global Weather Data
+
+> Current weather conditions and daily forecasts for any city or coordinates worldwide. Powered by Open-Meteo (CC BY 4.0), monetized via x402 micropayments.
+
+## API Base URL
+
+https://weather.hugen.tokyo
+
+## Authentication
+
+This API uses the x402 protocol for micropayments. Include a valid x402 payment header with each request. Payments are in USDC on Base chain (eip155:8453).
+
+## Discovery
+
+- Payment info: GET /.well-known/x402
+- OpenAPI spec: GET /openapi.json
+
+## Endpoints — $0.005/request
+
+- GET /weather/current?city={name} — Current weather for a city (temperature, humidity, wind, precipitation)
+- GET /weather/current?lat={lat}&lon={lon} — Current weather by coordinates
+- GET /weather/forecast?city={name}&days={1-7} — Daily forecast (1-7 days)
+- GET /weather/forecast?lat={lat}&lon={lon}&days={1-7} — Daily forecast by coordinates
+
+## Pricing
+
+- All endpoints: $0.005 USDC per request
+- Network: Base (eip155:8453)
+- Payment: x402 protocol (USDC)
+"""
+    return Response(content=content, media_type="text/plain; charset=utf-8")
 
 
 @app.get("/weather/current")
