@@ -112,8 +112,20 @@ server = x402ResourceServer(facilitator)
 server.register(NETWORK, ExactEvmServerScheme())
 server.register_extension(bazaar_resource_server_extension)
 
+# Solana support (Dexter market — activated by SOLANA_PAY_TO env var)
+SOLANA_PAY_TO = os.getenv("SOLANA_PAY_TO", "")
+if SOLANA_PAY_TO:
+    from x402.mechanisms.svm.constants import SOLANA_MAINNET_CAIP2
+    from x402.mechanisms.svm.exact import ExactSvmServerScheme
+    server.register(SOLANA_MAINNET_CAIP2, ExactSvmServerScheme())
+
+INTERNAL_KEY = os.getenv("INTERNAL_KEY", "")
+
 PRICE = "$0.005"
 PAYMENT = PaymentOption(scheme="exact", pay_to=EVM_ADDRESS, price=PRICE, network=NETWORK)
+ACCEPTS = [PAYMENT]
+if SOLANA_PAY_TO:
+    ACCEPTS.append(PaymentOption(scheme="exact", pay_to=SOLANA_PAY_TO, price=PRICE, network=SOLANA_MAINNET_CAIP2))
 
 
 # --- 402 Sample Responses (show agents what they'd get if they paid) ---
@@ -127,13 +139,13 @@ def _sample(example: dict):
 
 routes = {
     "GET /weather/current": RouteConfig(
-        accepts=[PAYMENT],
+        accepts=ACCEPTS,
         mime_type="application/json",
-        description="Get current weather conditions for any city worldwide — temperature, feels-like, humidity, "
-        "wind speed and direction, precipitation, and human-readable condition description. "
-        "Supports city name (geocoded automatically via Open-Meteo) or latitude/longitude coordinates. "
-        "Covers every location on Earth with data updated every 15 minutes. Powered by Open-Meteo (CC BY 4.0). "
-        "AI agent API for weather-aware trading strategies, logistics planning, and location-based decision making",
+        description="Get current weather for any city — temperature, feels-like, humidity, wind speed, precipitation, "
+        "and condition. Supports city name or lat/lon coordinates, global coverage updated every 15 minutes. "
+        "Powered by Open-Meteo (CC BY 4.0). "
+        "AI agent API for weather-aware trading, logistics planning, and location-based decisions. "
+        "Accepts USDC payments on Base and Solana",
         unpaid_response_body=_sample({
             "city": "Tokyo", "country": "Japan",
             "temperature_c": 12.5, "condition": "Partly cloudy",
@@ -161,13 +173,13 @@ routes = {
         },
     ),
     "GET /weather/forecast": RouteConfig(
-        accepts=[PAYMENT],
+        accepts=ACCEPTS,
         mime_type="application/json",
         description="Get daily weather forecast (1-7 days) for any city worldwide — max/min temperature, "
         "precipitation amount and probability, and peak wind speed per day. Supports city name "
         "(geocoded automatically) or latitude/longitude coordinates. Powered by Open-Meteo (CC BY 4.0). "
         "AI agent API for multi-day weather planning, agricultural decision support, event scheduling, "
-        "and travel itinerary optimization",
+        "and travel itinerary optimization. Accepts USDC payments on Base and Solana",
         unpaid_response_body=_sample({
             "city": "Tokyo", "country": "Japan",
             "latitude": 35.6895, "longitude": 139.6917,
@@ -250,7 +262,10 @@ class AccessLogMiddleware:
             qs = scope.get("query_string", b"").decode(errors="replace")
             url = f"{path}?{qs}" if qs else path
 
-            if hdrs.get(b"x-rapidapi-proxy-secret"):
+            ik = hdrs.get(b"x-internal-key", b"").decode(errors="replace")
+            if ik and ik == INTERNAL_KEY:
+                ch = "mcp-gateway"
+            elif hdrs.get(b"x-rapidapi-proxy-secret"):
                 ch = "rapidapi"
             elif status == 402:
                 ch = "no-pay"
@@ -264,7 +279,25 @@ class AccessLogMiddleware:
             )
 
 
-app.add_middleware(PaymentMiddlewareASGI, routes=routes, server=server)
+# --- Internal bypass (MCP gateway calls with X-Internal-Key) ---
+class PaymentWithInternalBypass:
+    """Wraps PaymentMiddlewareASGI: skip payment if X-Internal-Key matches."""
+
+    def __init__(self, app_inner, *, routes, server):
+        self.raw_app = app_inner
+        self.payment_app = PaymentMiddlewareASGI(app_inner, routes=routes, server=server)
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http" and INTERNAL_KEY:
+            headers = dict(scope.get("headers", []))
+            key = headers.get(b"x-internal-key", b"").decode(errors="replace")
+            if key and key == INTERNAL_KEY:
+                scope.setdefault("state", {})["_channel"] = "mcp-gateway"
+                return await self.raw_app(scope, receive, send)
+        return await self.payment_app(scope, receive, send)
+
+
+app.add_middleware(PaymentWithInternalBypass, routes=routes, server=server)
 app.add_middleware(AccessLogMiddleware)
 
 
