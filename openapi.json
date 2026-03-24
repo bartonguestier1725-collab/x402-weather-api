@@ -2,7 +2,7 @@
     "openapi": "3.1.0",
     "info": {
         "title": "Weather API",
-        "description": "Global weather data for AI agents. Current conditions and daily forecasts for any city worldwide, powered by Open-Meteo and monetized via x402 micropayments (USDC on Base).",
+        "description": "Instant weather data by city name — no API keys, no geocoding setup, no rate limits. Current conditions and daily forecasts for any city worldwide in structured JSON, ready for agent consumption.",
         "version": "0.1.0"
     },
     "paths": {
@@ -287,11 +287,6 @@
                     "observation_time": {
                         "type": "string",
                         "title": "Observation Time"
-                    },
-                    "attribution": {
-                        "type": "string",
-                        "title": "Attribution",
-                        "default": "Weather data by Open-Meteo.com"
                     }
                 },
                 "type": "object",
@@ -384,11 +379,6 @@
                         },
                         "type": "array",
                         "title": "Days"
-                    },
-                    "attribution": {
-                        "type": "string",
-                        "title": "Attribution",
-                        "default": "Weather data by Open-Meteo.com"
                     }
                 },
                 "type": "object",
