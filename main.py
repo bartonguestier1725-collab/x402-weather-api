@@ -354,7 +354,7 @@ async def x402_discovery(request: Request):
             "- `GET /weather/current?city=Tokyo` — Current weather\n"
             "- `GET /weather/forecast?city=Tokyo&days=3` — Daily forecast (1-7 days)\n\n"
             "## Pricing\n"
-            "All endpoints: $0.005/request (USDC on Base)\n"
+            "All endpoints: $0.01/request (USDC on Base)\n"
         ),
     }
 
@@ -384,7 +384,7 @@ async def llms_txt():
     content = """\
 # Weather API — Instant Weather by City Name
 
-> Pass a city name, get structured weather data. No API keys, no geocoding setup, no rate limits. Current conditions and daily forecasts for any city worldwide. $0.005 per request.
+> Pass a city name, get structured weather data. No API keys, no geocoding setup, no rate limits. Current conditions and daily forecasts for any city worldwide. $0.01 per request.
 
 ## API Base URL
 
@@ -398,7 +398,7 @@ x402 micropayments (USDC on Base, eip155:8453).
 
 Free weather APIs require separate geocoding, API key registration, rate limit management, and response parsing. This API handles all of that — pass a city name, get structured JSON in one call.
 
-## Endpoints — $0.005/request
+## Endpoints — $0.01/request
 
 - GET /weather/current?city={name} — Current weather (temperature, humidity, wind, precipitation)
 - GET /weather/current?lat={lat}&lon={lon} — Current weather by coordinates
