@@ -31,7 +31,7 @@ load_dotenv()
 
 # --- Config ---
 EVM_ADDRESS = os.getenv("EVM_ADDRESS")
-NETWORK: Network = os.getenv("NETWORK", "eip155:84532")
+NETWORK: Network = os.getenv("NETWORK", "eip155:8453")
 FACILITATOR_URL = os.getenv("FACILITATOR_URL", "https://x402.org/facilitator")
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", "4022"))
@@ -109,6 +109,12 @@ server = x402ResourceServer(facilitator)
 server.register(NETWORK, ExactEvmServerScheme())
 server.register_extension(bazaar_resource_server_extension)
 
+# Payment logging — records settlements to shared SQLite DB
+from payment_logger import PaymentLogger
+_pay_logger = PaymentLogger("weather")
+server.on_after_settle(_pay_logger.log_settlement)
+server.on_settle_failure(_pay_logger.log_failure)
+
 # Solana support (Dexter market — activated by SOLANA_PAY_TO env var)
 SOLANA_PAY_TO = os.getenv("SOLANA_PAY_TO", "")
 if SOLANA_PAY_TO:
@@ -118,7 +124,7 @@ if SOLANA_PAY_TO:
 
 INTERNAL_KEY = os.getenv("INTERNAL_KEY", "")
 
-PRICE = "$0.005"
+PRICE = "$0.01"
 PAYMENT = PaymentOption(scheme="exact", pay_to=EVM_ADDRESS, price=PRICE, network=NETWORK)
 ACCEPTS = [PAYMENT]
 if SOLANA_PAY_TO:
@@ -133,17 +139,26 @@ _ALTERNATIVES = {
         "transport": "streamable-http",
     },
     "api_key": {
-        "info": "Get a free API key with $0.05 trial credit — no wallet needed",
+        "info": "Get a free API key with $0.05 credit — covers search and broker calls, no wallet needed",
         "create": "POST https://discovery.hugen.tokyo/keys/create",
-        "then": "Connect to MCP Gateway above, pass key in _meta['api_key']",
+        "then": "POST /broker/call with X-API-Key header to call any x402 API",
         "docs": "https://discovery.hugen.tokyo/llms.txt",
+    },
+    "sdk": {
+        "info": "One-line Python access — no wallet, no setup",
+        "install": "pip install x402-pay",
+        "usage": "import x402_pay; r = x402_pay.get('https://weather.hugen.tokyo/weather/current?city=Tokyo')",
+    },
+    "intel": {
+        "info": "Need deeper analysis? Intel combines 4+ data sources with AI risk verdict in one call ($0.50)",
+        "example": "https://intel.hugen.tokyo/intel/token-report?address=0xdac17f958d2ee523a2206206994597c13d831ec7&chain=base",
     },
 }
 
 
 def _sample(example: dict):
     """Factory: returns unpaid_response_body callback with sample data."""
-    body = {"_notice": "Payment required ($0.005 USDC on Base). Sample response below.", "_alternatives": _ALTERNATIVES, **example}
+    body = {"_notice": f"Payment required ({PRICE} USDC on Base). Sample response below.", "_alternatives": _ALTERNATIVES, **example}
     def callback(_ctx):
         return UnpaidResponseResult(content_type="application/json", body=body)
     return callback
@@ -164,9 +179,13 @@ routes = {
         }),
         extensions={
             "bazaar": {
+                "discoverable": True,
+                "category": "weather",
+                "tags": ["weather", "forecast", "real-time", "geocoding"],
                 "info": {
                     "input": {
                         "type": "http",
+                        "method": "GET",
                         "queryParams": {"city": "Tokyo"},
                     },
                     "output": {
@@ -200,9 +219,13 @@ routes = {
         }),
         extensions={
             "bazaar": {
+                "discoverable": True,
+                "category": "weather",
+                "tags": ["weather", "forecast", "7-day", "daily"],
                 "info": {
                     "input": {
                         "type": "http",
+                        "method": "GET",
                         "queryParams": {"city": "Tokyo", "days": "3"},
                     },
                     "output": {

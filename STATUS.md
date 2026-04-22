@@ -12,8 +12,8 @@
 | EP | 価格 | 説明 |
 |----|------|------|
 | `GET /health` | 無料 | ヘルスチェック |
-| `GET /weather/current?city=Tokyo` | $0.001 | 現在の天気 |
-| `GET /weather/forecast?city=Tokyo&days=3` | $0.001 | 日次予報 |
+| `GET /weather/current?city=Tokyo` | $0.01 | 現在の天気 |
+| `GET /weather/forecast?city=Tokyo&days=3` | $0.01 | 日次予報 |
 
 ## リリース履歴
 
